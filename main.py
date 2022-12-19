@@ -1,8 +1,9 @@
+import asyncio
 import os
 from dotenv import load_dotenv
 
 from aiogram import Bot, types
-from aiogram.dispatcher import Dispatcher
+from aiogram.dispatcher.dispatcher import Dispatcher
 from aiogram.utils import executor
 
 
@@ -18,6 +19,15 @@ dp = Dispatcher(bot)
 async def send_welcome(msg: types.Message):
     await msg.answer(f'Я бот. Приятно познакомиться, {msg.from_user.first_name}')
 
+# @dp.message_handler(commands=["add_to_list"])
+# async def cmd_add_to_list(message: types.Message, mylist: list[int]):
+#     mylist.append(7)
+#     await message.answer("Добавлено число 7")
+#
+# @dp.message_handler(commands=["show_list"])
+# async def cmd_show_list(message: types.Message, mylist: list[int]):
+#     await message.answer(f"Ваш список: {mylist}")
+
 @dp.message_handler(content_types=['text'])
 async def get_text_messages(msg: types.Message):
    if msg.text.lower() == 'привет':
@@ -25,5 +35,12 @@ async def get_text_messages(msg: types.Message):
    else:
        await msg.answer('Не понимаю, что это значит.')
 
+# Запуск процесса поллинга новых апдейтов
+# async def main():
+#     mylist = []
+#     await dp.start_polling(bot, allowed_updates = ["mylist"])
+
 if __name__ == '__main__':
-   executor.start_polling(dp)
+    # mylist = []
+    executor.start_polling(dp)
+    # asyncio.run(main())
