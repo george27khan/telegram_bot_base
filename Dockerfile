@@ -7,7 +7,7 @@ RUN pip install --upgrade pip \
 
 COPY ./.env ./.env
 COPY pyproject.toml poetry.lock ./
-COPY ./main.py ./main.py
+COPY ./* ./*
 
 RUN poetry config virtualenvs.create false \
     && poetry install $(test "$YOUR_ENV" == production && echo "--no-dev") --no-interaction --no-ansi
