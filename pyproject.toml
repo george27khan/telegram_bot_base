@@ -8,6 +8,7 @@ authors = ["Georgiy <george27khan@gmail.com>"]
 python = "^3.9"
 python-dotenv = "^0.21.0"
 aiogram = "2.23.1"
+googlemaps = "^4.7.3"
 
 [tool.poetry.dev-dependencies]
 
