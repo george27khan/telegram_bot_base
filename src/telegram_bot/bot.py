@@ -36,20 +36,26 @@ print(dt.datetime.today().strftime("%B"))
 for i in range(7):
     print((dt.datetime.today() + dt.timedelta(days=i)).strftime("%a"))
 def get_calendar_keyboard():
+    lang = 'en'
     days_in_month = 31
-    map_day_to_name = {0: 'Пн', 1: 'Вт', 2: 'Ср', 3: 'Чт', 4: 'Пт', 5: 'Сб', 6: 'Вс'}
+    map_day_to_name_ru = {1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 7: 'Вс'}
+    map_day_to_name_en = {1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 7: 'Sun'}
     week_ru = {'Mon': 'Пн', 'Tue': 'Вт', 'Wed': 'Ср', 'Thu': 'Чт', 'Fri': 'Пт', 'Sat': 'Сб', 'Sun': 'Вс'}
     days_of_week_ru = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
     days_of_week_en = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    if lang == 'ru':
+        days_of_week = map_day_to_name_ru
+    else:
+        days_of_week = map_day_to_name_en
     month_name_en_ru = []
     cur_month_name = dt.datetime.today().strftime("%B")
     cur_day = dt.datetime.today().day
     day_of_week = dt.datetime.today().weekday()
-    cur_day_of_week = map_day_to_name[day_of_week]
+    #cur_day_of_week = map_day_to_name[day_of_week]
 
-    print(cur_day, cur_day_of_week)
+    #print(cur_day, cur_day_of_week)
     # шапка календаря
-    buttons = [types.InlineKeyboardButton(text=day, callback_data=f"week_day_{day}") for day in days_of_week_ru]
+    buttons = [types.InlineKeyboardButton(text=day_name, callback_data=f"week_day_{day}") for day, day_name in days_of_week.items()]
 
     # выравнивание календаря
     for empty in range(0, day_of_week):
@@ -70,7 +76,7 @@ def get_calendar_keyboard():
 
 @dp.message_handler(commands="calendar")
 async def cmd_random(message: types.Message):
-    await message.answer("Нажмите на кнопку, чтобы бот отправил число от 1 до 10", reply_markup=get_calendar_keyboard())
+    await message.answer("Выберите дату для бронирования", reply_markup=get_calendar_keyboard())
 
 @dp.callback_query_handler(text="random_value")
 async def send_random_value(call: types.CallbackQuery):
