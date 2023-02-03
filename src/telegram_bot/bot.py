@@ -65,7 +65,8 @@ def get_calendar_keyboard():
     if 0 < last_week_len < 7:
         for empty in range(0, 7 - last_week_len):
             buttons.append(types.InlineKeyboardButton(text=' ', callback_data=f"week_day_empty"))
-
+    buttons.append(types.InlineKeyboardButton(text='предыдущий месяц', callback_data=f"prev_month"))
+    buttons.append(types.InlineKeyboardButton(text='следующий месяц', callback_data=f"next_month"))
     keyboard = types.InlineKeyboardMarkup(row_width=7)
     keyboard.add(*buttons)
     return keyboard
