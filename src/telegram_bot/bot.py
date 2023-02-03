@@ -4,8 +4,21 @@ import datetime as dt
 
 import asyncio
 from aiogram import Bot, types
-from aiogram.dispatcher.dispatcher import Dispatcher
+from aiogram.dispatcher.dispatcher import Dispatcher, FSMContext
 from aiogram.dispatcher.filters import Text
+
+from aiogram.dispatcher.filters.state import State, StatesGroup
+
+g_hour_start = [9, 9, 9, 9, 9, 9, 9]
+g_hour_end = [18, 18, 18, 18, 18, 18, 18]
+g_session_time_min = 0.25
+def get_time_format(hour: int) -> str:
+    return f'{int(hour // 1)}:{int(hour % 1 * 60)}'
+def get_global_vars():
+    global g_hour_start
+    global g_hour_end
+    g_hour_start = 9
+    g_hour_end = 18
 
 
 dotenv_path = os.path.join(os.path.dirname(__file__), '../../.env')
@@ -16,25 +29,10 @@ TELEGRAMM_BOT_TOKEN = os.getenv('TELEGRAMM_BOT_TOKEN')
 bot = Bot(token=TELEGRAMM_BOT_TOKEN)
 dp = Dispatcher(bot)
 
-# days_in_month = 31
-# map_day_to_name = {0:'Пн', 1:'Вт', 2:'Ср', 3:'Чт', 4:'Пт', 5:'Сб', 6:'Вс'}
-# days_of_week_ru = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
-# cur_day = dt.datetime.today().day
-# day_of_week = dt.datetime.today().weekday()
-# cur_day_of_week = map_day_to_name[day_of_week]
-# print(cur_day, cur_day_of_week)
-# #шапка календаря
-# buttons = [types.InlineKeyboardButton(text=day, callback_data=f"week_day_{day}") for day in days_of_week_ru]
-#
-# #выравнивание календаря
-# for empty in range(0, day_of_week):
-#     buttons.append(types.InlineKeyboardButton(text='', callback_data=f"week_day_empty"))
-#
-# for day in range(1, days_in_month + 1):
-#     buttons.append(types.InlineKeyboardButton(text=str(day), callback_data=f"day_{day}"))
-print(dt.datetime.today().strftime("%B"))
-for i in range(7):
-    print((dt.datetime.today() + dt.timedelta(days=i)).strftime("%a"))
+class Booking(StatesGroup):
+    choose_day = State()
+    choose_time = State()
+
 def get_calendar_keyboard():
     lang = 'en'
     days_in_month = 31
@@ -68,21 +66,26 @@ def get_calendar_keyboard():
         for empty in range(0, 7 - last_week_len):
             buttons.append(types.InlineKeyboardButton(text=' ', callback_data=f"week_day_empty"))
 
-    # Благодаря row_width=2, в первом ряду будет две кнопки, а оставшаяся одна
-    # уйдёт на следующую строку
     keyboard = types.InlineKeyboardMarkup(row_width=7)
     keyboard.add(*buttons)
     return keyboard
 
 @dp.message_handler(commands="calendar")
-async def cmd_random(message: types.Message):
+async def cmd_random(message: types.Message, state: FSMContext):
     await message.answer("Выберите дату для бронирования", reply_markup=get_calendar_keyboard())
+    await state.set_state(Booking.choose_day.state) #встаем в состояние выбора дня
 
-@dp.callback_query_handler(text="random_value")
-async def send_random_value(call: types.CallbackQuery):
-    await call.message.answer(str(randint(1, 10)))
-    await call.answer(text="Спасибо, что воспользовались ботом!", show_alert=True)
-    # или просто await call.answer()
+@dp.callback_query_handler(Text(startswith=["week_day_empty", "week_day_"]))
+async def callback_empty(call: types.CallbackQuery, state: FSMContext):
+    await call.answer()
+    return
+@dp.callback_query_handler(Text(startswith=["day_"]))
+async def callback_empty(call: types.CallbackQuery, state: FSMContext):
+    await call.answer()
+    return
+
+
+
 
 
 
