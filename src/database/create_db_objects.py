@@ -73,5 +73,32 @@ scheduler = Table(
     Column("created_dt", DateTime(), default=datetime.now, nullable=False),
     Column("updated_on", DateTime(), default=datetime.now, onupdate=datetime.now, nullable=False)
 )
+position = Table(
+    "position",
+    metadata,
+    Column("id", Integer(), primary_key=True),
+    Column("position_name", String(1000), nullable=False),
+    Column("created_dt", DateTime(), default=datetime.now, nullable=False),
+    Column("updated_on", DateTime(), default=datetime.now, onupdate=datetime.now, nullable=False)
+)
+employee = Table(
+    "employee",
+    metadata,
+    Column("id", Integer(), primary_key=True),
+    Column("first_name", String(1000), nullable=False),
+    Column("middle_name", String(1000), nullable=False),
+    Column("last_name", String(1000), nullable=False),
+    Column("birth_date", DateTime(), nullable=False),
+    Column("email", String(1000), nullable=False),
+    Column("phone_number", String(1000), nullable=False),
+    Column("id_position", Integer(), ForeignKey(position.c.id), nullable=False),
+    Column("is_male", Boolean(), nullable=False, comment="Пол"),
+    Column("hire_date", DateTime(), default=datetime.now, nullable=False),
+    Column("created_dt", DateTime(), default=datetime.now, nullable=False),
+    Column("updated_on", DateTime(), default=datetime.now, onupdate=datetime.now, nullable=False)
+)
+
 #создание в базе всех описанных таблицы
 metadata.create_all(engine)
+
+#metadata.drop_all(engine)
