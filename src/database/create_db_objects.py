@@ -11,8 +11,10 @@ from sqlalchemy import (
     Text,
     DateTime,
     Boolean,
-    ForeignKey
+    ForeignKey,
+    Index
 )
+from sqlalchemy.sql import func
 from datetime import datetime
 
 """
@@ -60,8 +62,9 @@ user = Table(
     Column("telegram", String(1000), nullable=False, comment="username из telegram"),
     Column("phone", String(1000), nullable=False, comment="Номер из telegram"),
     Column("user_name", String(1000), nullable=False, comment="Имя из telegram"),
-    Column("created_dt", DateTime(), default=datetime.now, nullable=False),
-    Column("updated_on", DateTime(), default=datetime.now, onupdate=datetime.now, nullable=False)
+    Column("created_dt", DateTime(), server_default=func.now(), nullable=False),
+    Column("updated_on", DateTime(), server_default=func.now(), onupdate=func.now(), nullable=False),
+    Index("idx_pk_user", "id"),
 )
 
 scheduler = Table(
@@ -70,16 +73,19 @@ scheduler = Table(
     Column("id", Integer(), primary_key=True),
     Column("id_user", Integer(), ForeignKey(user.c.id), nullable=False),
     Column("visit_dt", DateTime(), nullable=False, comment="Дата и время бронирования"),
-    Column("created_dt", DateTime(), default=datetime.now, nullable=False),
-    Column("updated_on", DateTime(), default=datetime.now, onupdate=datetime.now, nullable=False)
+    Column("created_dt", DateTime(), server_default=func.now(), nullable=False),
+    Column("updated_on", DateTime(), server_default=func.now(), onupdate=func.now(), nullable=False),
+    Index("idx_pk_scheduler", "id"),
+    Index("idx_fk_user", "id_user"),
 )
 position = Table(
     "position",
     metadata,
     Column("id", Integer(), primary_key=True),
     Column("position_name", String(1000), nullable=False),
-    Column("created_dt", DateTime(), default=datetime.now, nullable=False),
-    Column("updated_on", DateTime(), default=datetime.now, onupdate=datetime.now, nullable=False)
+    Column("created_dt", DateTime(), server_default=func.now(), nullable=False),
+    Column("updated_on", DateTime(), server_default=func.now(), onupdate=func.now(), nullable=False),
+    Index("idx_pk_position", "id"),
 )
 employee = Table(
     "employee",
@@ -93,12 +99,16 @@ employee = Table(
     Column("phone_number", String(1000), nullable=False),
     Column("id_position", Integer(), ForeignKey(position.c.id), nullable=False),
     Column("is_male", Boolean(), nullable=False, comment="Пол"),
-    Column("hire_date", DateTime(), default=datetime.now, nullable=False),
-    Column("created_dt", DateTime(), default=datetime.now, nullable=False),
-    Column("updated_on", DateTime(), default=datetime.now, onupdate=datetime.now, nullable=False)
+    Column("hire_date", DateTime(), server_default=func.now(), nullable=False),
+    Column("created_dt", DateTime(), server_default=func.now(), nullable=False),
+    Column("updated_on", DateTime(), server_default=func.now(), onupdate=func.now(), nullable=False),
+    Index("idx_pk_employee", "id"),
+    Index("idx_fk_position", "id_position")
 )
+
+#отчистка базы от таблиц
+metadata.drop_all(engine)
 
 #создание в базе всех описанных таблицы
 metadata.create_all(engine)
 
-#metadata.drop_all(engine)
