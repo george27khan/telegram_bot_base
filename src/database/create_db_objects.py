@@ -17,8 +17,24 @@ from sqlalchemy import (
     Index
 )
 from sqlalchemy.sql import func
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import mapper
+from datetime import datetime
 
+"""
+import psycopg2
+from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+# Устанавливаем соединение с postgres
+connection = psycopg2.connect(user="postgres", password="1111")
+connection.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+# Создаем курсор для выполнения операций с базой данных
+cursor = connection.cursor()
+sql_create_database = 
+# Создаем базу данных
+cursor.execute('create database sqlalchemy_tuts')
+# Закрываем соединение
+cursor.close()
+connection.close()
+"""
 # загрузка переменных окружения
 dotenv_path = os.path.join(os.path.dirname(__file__), "../../.env")
 if os.path.exists(dotenv_path):
@@ -37,93 +53,96 @@ engine = create_engine(
 )
 conn = engine.connect()
 
-Base = declarative_base()
-class User(Base):
-    __tablename__ = "user"
-    id = Column(Integer(), primary_key=True)
-    telegram = Column(String(1000), nullable=False, comment="username из telegram")
-    phone = Column(String(20), nullable=False, comment="Номер из telegram")
-    user_name = Column(String(1000), nullable=False, comment="Имя из telegram")
-    created_dt = Column(DateTime(), server_default=func.now(), nullable=False)
-    updated_on = Column(DateTime(), server_default=func.now(), server_onupdate=func.now(), nullable=False)
-    __table_args__ = (
-        Index('idx_pk_user' 'id')
-    )
+metadata = MetaData()
 
-class Scheduler(Base):
-    __table_name__ = "scheduler"
-    id = Column(Integer(), primary_key=True)
-    id_user = Column(Integer(), ForeignKey(user.c.id), nullable=False)
-    visit_dt = Column(DateTime(), nullable=False, comment="Дата и время бронирования")
-    created_dt = Column(DateTime(), server_default=func.now(), nullable=False)
-    updated_on = Column(DateTime(), server_default=func.now(), server_onupdate=func.now(), nullable=False)
+user = Table(
+    "user",
+    metadata,
+    Column("id", Integer(), primary_key=True),
+    Column("telegram", String(1000), nullable=False, comment="username из telegram"),
+    Column("phone", String(20), nullable=False, comment="Номер из telegram"),
+    Column("user_name", String(1000), nullable=False, comment="Имя из telegram"),
+    Column("created_dt", DateTime(), server_default=func.now(), nullable=False),
+    Column("updated_on", DateTime(), server_default=func.now(), server_onupdate=func.now(), nullable=False),
+    Index("idx_pk_user", "id"),
+)
 
-# scheduler = Table(
-#     "scheduler",
-#     metadata,
-#
-#     Index("idx_pk_scheduler", "id"),
-#     Index("idx_fk_user", "id_user"),
-# )
-# position = Table(
-#     "position",
-#     metadata,
-#     Column("id", Integer(), primary_key=True),
-#     Column("position_name", String(500), nullable=False),
-#     Column("created_dt", DateTime(), server_default=func.now(), nullable=False),
-#     Column("updated_on", DateTime(), server_default=func.now(), server_onupdate=func.now(), nullable=False),
-#     Index("idx_pk_position", "id"),
-# )
-# employee = Table(
-#     "employee",
-#     metadata,
-#     Column("id", Integer(), primary_key=True),
-#     Column("first_name", String(100), nullable=False),
-#     Column("middle_name", String(100), nullable=False),
-#     Column("last_name", String(100), nullable=False),
-#     Column("birth_date", DateTime(), nullable=False),
-#     Column("email", String(1000), nullable=False),
-#     Column("phone_number", String(20), nullable=False),
-#     Column("id_position", Integer(), ForeignKey(position.c.id), nullable=False),
-#     Column("is_male", Boolean(), nullable=False, comment="Пол"),
-#     Column("hire_date", DateTime(), server_default=func.now(), nullable=False),
-#     Column("created_dt", DateTime(), server_default=func.now(), nullable=False),
-#     Column("updated_on", DateTime(), server_default=func.now(), server_onupdate=func.now(), nullable=False),
-#     Index("idx_pk_employee", "id"),
-#     Index("idx_fk_position", "id_position")
-# )
-#
-# setting = Table(
-#     "setting",
-#     metadata,
-#     Column("id", Integer(), primary_key=True),
-#     Column("setting_code", String(100), nullable=False),
-#     Column("setting_describe", String(1000), nullable=False),
-#     Column("number_value", Numeric()),
-#     Column("string_value", String(1000)),
-#     Column("date_value", DateTime()),
-#     Column("created_dt", DateTime(), server_default=func.now(), nullable=False),
-#     Column("updated_on", DateTime(), server_default=func.now(), server_onupdate=func.now(), nullable=False),
-#     #Index("idx_pk_settings", "id"),
-# )
-#
-#
-# class User(object):
-#     pass
-# class Scheduler(object):
-#     pass
-# class Position(object):
-#     pass
-# class Employee(object):
-#     pass
-# class Setting(object):
-#     pass
-#
-# #отчистка базы от таблиц
-# metadata.drop_all(engine)
-#
-# #создание в базе всех описанных таблицы
-# metadata.create_all(engine)
+scheduler = Table(
+    "scheduler",
+    metadata,
+    Column("id", Integer(), primary_key=True),
+    Column("id_user", Integer(), ForeignKey(user.c.id), nullable=False),
+    Column("visit_dt", DateTime(), nullable=False, comment="Дата и время бронирования"),
+    Column("created_dt", DateTime(), server_default=func.now(), nullable=False),
+    Column("updated_on", DateTime(), server_default=func.now(), server_onupdate=func.now(), nullable=False),
+    Index("idx_pk_scheduler", "id"),
+    Index("idx_fk_user", "id_user"),
+)
+position = Table(
+    "position",
+    metadata,
+    Column("id", Integer(), primary_key=True),
+    Column("position_name", String(500), nullable=False),
+    Column("created_dt", DateTime(), server_default=func.now(), nullable=False),
+    Column("updated_on", DateTime(), server_default=func.now(), server_onupdate=func.now(), nullable=False),
+    Index("idx_pk_position", "id"),
+)
+employee = Table(
+    "employee",
+    metadata,
+    Column("id", Integer(), primary_key=True),
+    Column("first_name", String(100), nullable=False),
+    Column("middle_name", String(100), nullable=False),
+    Column("last_name", String(100), nullable=False),
+    Column("birth_date", DateTime(), nullable=False),
+    Column("email", String(1000), nullable=False),
+    Column("phone_number", String(20), nullable=False),
+    Column("id_position", Integer(), ForeignKey(position.c.id), nullable=False),
+    Column("is_male", Boolean(), nullable=False, comment="Пол"),
+    Column("hire_date", DateTime(), server_default=func.now(), nullable=False),
+    Column("created_dt", DateTime(), server_default=func.now(), nullable=False),
+    Column("updated_on", DateTime(), server_default=func.now(), server_onupdate=func.now(), nullable=False),
+    Index("idx_pk_employee", "id"),
+    Index("idx_fk_position", "id_position")
+)
+
+setting = Table(
+    "setting",
+    metadata,
+    Column("id", Integer(), primary_key=True),
+    Column("setting_code", String(100), nullable=False),
+    Column("setting_describe", String(1000), nullable=False),
+    Column("number_value", Numeric()),
+    Column("string_value", String(1000)),
+    Column("date_value", DateTime()),
+    Column("created_dt", DateTime(), server_default=func.now(), nullable=False),
+    Column("updated_on", DateTime(), server_default=func.now(), server_onupdate=func.now(), nullable=False),
+    #Index("idx_pk_settings", "id"),
+)
+
+
+class User(object):
+    pass
+class Scheduler(object):
+    pass
+class Position(object):
+    pass
+class Employee(object):
+    pass
+class Setting(object):
+    pass
+
+mapper(User, user)
+mapper(Scheduler, scheduler)
+mapper(Position, position)
+mapper(Employee, employee)
+mapper(Setting, setting)
+
+#отчистка базы от таблиц
+metadata.drop_all(engine)
+
+#создание в базе всех описанных таблицы
+metadata.create_all(engine)
 
 setting_list = [
     {
