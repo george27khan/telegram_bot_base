@@ -14,8 +14,9 @@ from sqlalchemy import (
     DateTime,
     Boolean,
     ForeignKey,
-    Index
+    Index,
 )
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -73,6 +74,7 @@ class Position(Base):
     __table_args__ = (
         Index('idx_pk_position', 'id'),
     )
+    employees = relationship("Employee")
 
 class Employee(Base):
     __tablename__ = "employee"
@@ -92,6 +94,9 @@ class Employee(Base):
         Index("idx_pk_employee", "id"),
         Index("idx_fk_position", "id_position")
     )
+
+    position = relationship("Position")
+
 
 class Setting(Base):
     __tablename__ = "setting"
