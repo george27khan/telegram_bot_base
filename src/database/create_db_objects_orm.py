@@ -16,7 +16,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Session, sessionmaker
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -37,8 +37,6 @@ engine = create_engine(
     f"{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
     #,echo=True
 )
-conn = engine.connect()
-
 Base = declarative_base()
 
 class User(Base):
@@ -52,11 +50,13 @@ class User(Base):
     __table_args__ = (
         Index('idx_pk_user', 'id'),
     )
+    employees = relationship("Scheduler", backref='user')
 
 class Scheduler(Base):
     __tablename__ = "scheduler"
     id = Column(Integer(), primary_key=True)
     id_user = Column(Integer(), ForeignKey("user.id"), nullable=False)
+    id_employee = Column(Integer(), ForeignKey("employee.id"), nullable=False)
     visit_dt = Column(DateTime(), nullable=False, comment="Дата и время бронирования")
     created_dt = Column(DateTime(), server_default=func.now(), nullable=False)
     updated_on = Column(DateTime(), server_default=func.now(), server_onupdate=func.now(), nullable=False)
@@ -64,17 +64,6 @@ class Scheduler(Base):
         Index('idx_pk_scheduler', 'id'),
         Index('idx_fk_user', 'id')
     )
-
-class Position(Base):
-    __tablename__ = "position"
-    id = Column(Integer(), primary_key=True)
-    position_name = Column(String(500), nullable=False)
-    created_dt = Column(DateTime(), server_default=func.now(), nullable=False)
-    updated_on = Column(DateTime(), server_default=func.now(), server_onupdate=func.now(), nullable=False)
-    __table_args__ = (
-        Index('idx_pk_position', 'id'),
-    )
-    employees = relationship("Employee")
 
 class Employee(Base):
     __tablename__ = "employee"
@@ -94,8 +83,19 @@ class Employee(Base):
         Index("idx_pk_employee", "id"),
         Index("idx_fk_position", "id_position")
     )
-
+    users = relationship("Scheduler", backref='employee')
     position = relationship("Position")
+
+class Position(Base):
+    __tablename__ = "position"
+    id = Column(Integer(), primary_key=True)
+    position_name = Column(String(500), nullable=False)
+    created_dt = Column(DateTime(), server_default=func.now(), nullable=False)
+    updated_on = Column(DateTime(), server_default=func.now(), server_onupdate=func.now(), nullable=False)
+    __table_args__ = (
+        Index('idx_pk_position', 'id'),
+    )
+    employees = relationship("Employee")
 
 
 class Setting(Base):
@@ -199,3 +199,5 @@ t = conn.begin() #start transaction
 res = conn.execute(insert(setting), setting_list)
 print(res.rowcount)
 t.commit()'''
+
+session = sessionmaker(bind=engine)
