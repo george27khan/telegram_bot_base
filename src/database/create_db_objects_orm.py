@@ -35,9 +35,10 @@ POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 engine = create_engine(
     f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@"
     f"{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
-    #,echo=True
+    # ,echo=True
 )
 Base = declarative_base()
+
 
 class User(Base):
     __tablename__ = "user"
@@ -46,11 +47,15 @@ class User(Base):
     phone = Column(String(20), nullable=False, comment="Номер из telegram")
     user_name = Column(String(1000), nullable=False, comment="Имя из telegram")
     created_dt = Column(DateTime(), server_default=func.now(), nullable=False)
-    updated_on = Column(DateTime(), server_default=func.now(), server_onupdate=func.now(), nullable=False)
-    __table_args__ = (
-        Index('idx_pk_user', 'id'),
+    updated_on = Column(
+        DateTime(),
+        server_default=func.now(),
+        server_onupdate=func.now(),
+        nullable=False,
     )
-    employees = relationship("Scheduler", backref='user')
+    __table_args__ = (Index("idx_pk_user", "id"),)
+    employees = relationship("Scheduler", backref="user")
+
 
 class Scheduler(Base):
     __tablename__ = "scheduler"
@@ -59,11 +64,14 @@ class Scheduler(Base):
     id_employee = Column(Integer(), ForeignKey("employee.id"), nullable=False)
     visit_dt = Column(DateTime(), nullable=False, comment="Дата и время бронирования")
     created_dt = Column(DateTime(), server_default=func.now(), nullable=False)
-    updated_on = Column(DateTime(), server_default=func.now(), server_onupdate=func.now(), nullable=False)
-    __table_args__ = (
-        Index('idx_pk_scheduler', 'id'),
-        Index('idx_fk_user', 'id')
+    updated_on = Column(
+        DateTime(),
+        server_default=func.now(),
+        server_onupdate=func.now(),
+        nullable=False,
     )
+    __table_args__ = (Index("idx_pk_scheduler", "id"), Index("idx_fk_user", "id"))
+
 
 class Employee(Base):
     __tablename__ = "employee"
@@ -78,23 +86,32 @@ class Employee(Base):
     is_male = Column(Boolean(), nullable=False, comment="Пол")
     hire_date = Column(DateTime(), server_default=func.now(), nullable=False)
     created_dt = Column(DateTime(), server_default=func.now(), nullable=False)
-    updated_on = Column(DateTime(), server_default=func.now(), server_onupdate=func.now(), nullable=False)
+    updated_on = Column(
+        DateTime(),
+        server_default=func.now(),
+        server_onupdate=func.now(),
+        nullable=False,
+    )
     __table_args__ = (
         Index("idx_pk_employee", "id"),
-        Index("idx_fk_position", "id_position")
+        Index("idx_fk_position", "id_position"),
     )
-    users = relationship("Scheduler", backref='employee')
+    users = relationship("Scheduler", backref="employee")
     position = relationship("Position")
+
 
 class Position(Base):
     __tablename__ = "position"
     id = Column(Integer(), primary_key=True)
     position_name = Column(String(500), nullable=False)
     created_dt = Column(DateTime(), server_default=func.now(), nullable=False)
-    updated_on = Column(DateTime(), server_default=func.now(), server_onupdate=func.now(), nullable=False)
-    __table_args__ = (
-        Index('idx_pk_position', 'id'),
+    updated_on = Column(
+        DateTime(),
+        server_default=func.now(),
+        server_onupdate=func.now(),
+        nullable=False,
     )
+    __table_args__ = (Index("idx_pk_position", "id"),)
     employees = relationship("Employee")
 
 
@@ -107,10 +124,14 @@ class Setting(Base):
     string_value = Column(String(1000))
     date_value = Column(DateTime())
     created_dt = Column(DateTime(), server_default=func.now(), nullable=False)
-    updated_on = Column(DateTime(), server_default=func.now(), server_onupdate=func.now(), nullable=False)
-    __table_args__ = (
-        Index("idx_pk_settings", "id"),
+    updated_on = Column(
+        DateTime(),
+        server_default=func.now(),
+        server_onupdate=func.now(),
+        nullable=False,
     )
+    __table_args__ = (Index("idx_pk_settings", "id"),)
+
 
 # #отчистка базы от таблиц
 Base.metadata.drop_all(engine)
@@ -118,86 +139,105 @@ Base.metadata.drop_all(engine)
 # #создание в базе всех описанных таблицы
 Base.metadata.create_all(engine)
 
-'''setting_list = [
-    {
-        "setting_code": "session_time_hour",
-        "setting_describe": "Продолжительность приема в часах",
-        "number_value": 0.25
-    },
-    {
-        "setting_code": "monday_start_hour",
-        "setting_describe": "Начало рабочего дня в понедельник",
-        "number_value": 9
-    },
-    {
-        "setting_code": "tuesday_start_hour",
-        "setting_describe": "Начало рабочего дня в вторник",
-        "number_value": 9
-    },
-    {
-        "setting_code": "wednesday_start_hour",
-        "setting_describe": "Начало рабочего дня в среду",
-        "number_value": 9
-    },
-    {
-        "setting_code": "thursday_start_hour",
-        "setting_describe": "Начало рабочего дня в четверг",
-        "number_value": 9
-    },
-    {
-        "setting_code": "friday_start_hour",
-        "setting_describe": "Начало рабочего дня в пятницу",
-        "number_value": 9
-    },
-    {
-        "setting_code": "saturday_start_hour",
-        "setting_describe": "Начало рабочего дня в субботу",
-        "number_value": 10
-    },
-    {
-        "setting_code": "sunday_start_hour",
-        "setting_describe": "Начало рабочего дня в воскресенье",
-        "number_value": 10
-    },
-    {
-        "setting_code": "monday_end_hour",
-        "setting_describe": "Конец рабочего дня в понедельник",
-        "number_value": 18
-    },
-    {
-        "setting_code": "tuesday_end_hour",
-        "setting_describe": "Конец рабочего дня в вторник",
-        "number_value": 18
-    },
-    {
-        "setting_code": "wednesday_end_hour",
-        "setting_describe": "Конец рабочего дня в среду",
-        "number_value": 18
-    },
-    {
-        "setting_code": "thursday_end_hour",
-        "setting_describe": "Конец рабочего дня в четверг",
-        "number_value": 18
-    },
-    {
-        "setting_code": "friday_end_hour",
-        "setting_describe": "Конец рабочего дня в пятницу",
-        "number_value": 18
-    },
-    {
-        "setting_code": "saturday_end_hour",
-        "setting_describe": "Конец рабочего дня в субботу",
-        "number_value": 16
-    },
-    {
-        "setting_code": "sunday_end_hour",
-        "setting_describe": "Конец рабочего дня в воскресенье",
-        "number_value": 16
-    },
-]
-t = conn.begin() #start transaction
-res = conn.execute(insert(setting), setting_list)
-print(res.rowcount)
-t.commit()'''
+session_time_hour = Setting(
+    setting_code="session_time_hour",
+    setting_describe="Продолжительность приема в часах",
+    number_value=0.25,
+)
 
-session = sessionmaker(bind=engine)
+monday_start_hour = Setting(
+    setting_code="monday_start_hour",
+    setting_describe="Начало рабочего дня в понедельник",
+    number_value=9,
+)
+tuesday_start_hour = Setting(
+    setting_code="tuesday_start_hour",
+    setting_describe="Начало рабочего дня в вторник",
+    number_value=9,
+)
+wednesday_start_hour = Setting(
+    setting_code="wednesday_start_hour",
+    setting_describe="Начало рабочего дня в среду",
+    number_value=9,
+)
+thursday_start_hour = Setting(
+    setting_code="thursday_start_hour",
+    setting_describe="Начало рабочего дня в четверг",
+    number_value=9,
+)
+friday_start_hour = Setting(
+    setting_code="friday_start_hour",
+    setting_describe="Начало рабочего дня в пятницу",
+    number_value=9,
+)
+saturday_start_hour = Setting(
+    setting_code="saturday_start_hour",
+    setting_describe="Начало рабочего дня в субботу",
+    number_value=9,
+)
+sunday_start_hour = Setting(
+    setting_code="sunday_start_hour",
+    setting_describe="Начало рабочего дня в воскресенье",
+    number_value=9,
+)
+
+monday_end_hour = Setting(
+    setting_code="monday_end_hour",
+    setting_describe="Конец рабочего дня в понедельник",
+    number_value=18,
+)
+tuesday_end_hour = Setting(
+    setting_code="tuesday_end_hour",
+    setting_describe="Конец рабочего дня в вторник",
+    number_value=18,
+)
+wednesday_end_hour = Setting(
+    setting_code="wednesday_end_hour",
+    setting_describe="Конец рабочего дня в среду",
+    number_value=18,
+)
+thursday_end_hour = Setting(
+    setting_code="thursday_end_hour",
+    setting_describe="Конец рабочего дня в четверг",
+    number_value=18,
+)
+friday_end_hour = Setting(
+    setting_code="friday_end_hour",
+    setting_describe="Конец рабочего дня в пятницу",
+    number_value=18,
+)
+saturday_end_hour = Setting(
+    setting_code="saturday_end_hour",
+    setting_describe="Конец рабочего дня в субботу",
+    number_value=16,
+)
+sunday_end_hour = Setting(
+    setting_code="sunday_end_hour",
+    setting_describe="Конец рабочего дня в воскресенье",
+    number_value=16,
+)
+
+session = sessionmaker(bind=engine) # создание базового шалона открытия сессии
+session = Session() # открытие сессии транзакции
+#добавление данных
+session.add_all(
+    [
+        session_time_hour,
+        monday_start_hour,
+        tuesday_start_hour,
+        wednesday_start_hour,
+        thursday_start_hour,
+        friday_start_hour,
+        saturday_start_hour,
+        sunday_start_hour,
+        monday_end_hour,
+        tuesday_end_hour,
+        wednesday_end_hour,
+        thursday_end_hour,
+        friday_end_hour,
+        saturday_end_hour,
+        sunday_end_hour,
+    ]
+)
+print(session.new)
+session.commit()
