@@ -16,9 +16,9 @@ from sqlalchemy import (
     ForeignKey,
     Index,
 )
-from sqlalchemy.orm import relationship, Session, sessionmaker
+from sqlalchemy.orm import relationship, Session, sessionmaker, declarative_base
 from sqlalchemy.sql import func
-from sqlalchemy.ext.declarative import declarative_base
+#from sqlalchemy.ext.declarative import declarative_base
 
 
 # загрузка переменных окружения
@@ -217,27 +217,29 @@ sunday_end_hour = Setting(
     number_value=16,
 )
 
-session = sessionmaker(bind=engine) # создание базового шалона открытия сессии
-session = Session() # открытие сессии транзакции
-#добавление данных
-session.add_all(
-    [
-        session_time_hour,
-        monday_start_hour,
-        tuesday_start_hour,
-        wednesday_start_hour,
-        thursday_start_hour,
-        friday_start_hour,
-        saturday_start_hour,
-        sunday_start_hour,
-        monday_end_hour,
-        tuesday_end_hour,
-        wednesday_end_hour,
-        thursday_end_hour,
-        friday_end_hour,
-        saturday_end_hour,
-        sunday_end_hour,
-    ]
-)
-print(session.new)
-session.commit()
+Session = sessionmaker(bind=engine) # создание базового шалона открытия сессии
+with Session() as session: # открытие сессии транзакции
+    #добавление данных
+    session.add_all(
+        [
+            session_time_hour,
+            monday_start_hour,
+            tuesday_start_hour,
+            wednesday_start_hour,
+            thursday_start_hour,
+            friday_start_hour,
+            saturday_start_hour,
+            sunday_start_hour,
+            monday_end_hour,
+            tuesday_end_hour,
+            wednesday_end_hour,
+            thursday_end_hour,
+            friday_end_hour,
+            saturday_end_hour,
+            sunday_end_hour,
+        ]
+    )
+    #print(session.new)
+    session.commit()
+
+print(session.query(Setting.id).all())
