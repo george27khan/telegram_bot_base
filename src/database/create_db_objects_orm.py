@@ -1,12 +1,15 @@
 import os
 from dotenv import load_dotenv
-
+import json
+from src.database.postgres_db import engine, Session
 from sqlalchemy import (
     create_engine,
     insert,
     MetaData,
     Table,
     String,
+    Time,
+    JSON,
     Integer,
     Numeric,
     Column,
@@ -16,29 +19,11 @@ from sqlalchemy import (
     ForeignKey,
     Index,
 )
-from sqlalchemy.orm import relationship, Session, sessionmaker, declarative_base
+from sqlalchemy.orm import relationship, declarative_base
 from sqlalchemy.sql import func
 #from sqlalchemy.ext.declarative import declarative_base
 
-
-# загрузка переменных окружения
-dotenv_path = os.path.join(os.path.dirname(__file__), "../../.env")
-if os.path.exists(dotenv_path):
-    load_dotenv(dotenv_path)
-POSTGRES_DB = os.getenv("POSTGRES_DB")
-POSTGRES_HOST = os.getenv("POSTGRES_HOST")
-POSTGRES_PORT = os.getenv("POSTGRES_PORT")
-POSTGRES_USER = os.getenv("POSTGRES_USER")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
-
-# Подключение к серверу PostgreSQL на localhost с помощью psycopg2 DBAPI
-engine = create_engine(
-    f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@"
-    f"{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
-    # ,echo=True
-)
 Base = declarative_base()
-
 
 class User(Base):
     __tablename__ = "user"
@@ -117,12 +102,13 @@ class Position(Base):
 
 class Setting(Base):
     __tablename__ = "setting"
-    id = Column(Integer(), primary_key=True)
-    setting_code = Column(String(100), nullable=False)
+    #id = Column(Integer(), primary_key=True)
+    setting_code = Column(String(100), primary_key=True)
     setting_describe = Column(String(1000), nullable=False)
     number_value = Column(Numeric())
     string_value = Column(String(1000))
     date_value = Column(DateTime())
+    json_value = Column(JSON())
     created_dt = Column(DateTime(), server_default=func.now(), nullable=False)
     updated_on = Column(
         DateTime(),
@@ -130,7 +116,7 @@ class Setting(Base):
         server_onupdate=func.now(),
         nullable=False,
     )
-    __table_args__ = (Index("idx_pk_settings", "id"),)
+    __table_args__ = (Index("idx_pk_settings", "setting_code"),)
 
 
 # #отчистка базы от таблиц
@@ -144,102 +130,122 @@ session_time_hour = Setting(
     setting_describe="Продолжительность приема в часах",
     number_value=0.25,
 )
-
-monday_start_hour = Setting(
-    setting_code="monday_start_hour",
-    setting_describe="Начало рабочего дня в понедельник",
-    number_value=9,
+start_hour = json.dumps({'Mon': 9, 'Tue': 9, 'Wed': 9, 'Thu': 9, 'Fri': 9, 'Sat': 9, 'Sun': 9})
+end_hour = json.dumps({'Mon': 18, 'Tue': 18, 'Wed': 18, 'Thu': 18, 'Fri': 18, 'Sat': 16, 'Sun': 16})
+start_hour_scheduler = Setting(
+    setting_code="start_hour_scheduler",
+    setting_describe="График начала рабочего дня",
+    json_value=start_hour,
 )
-tuesday_start_hour = Setting(
-    setting_code="tuesday_start_hour",
-    setting_describe="Начало рабочего дня в вторник",
-    number_value=9,
+end_hour_scheduler = Setting(
+    setting_code="end_hour_scheduler",
+    setting_describe="График конца рабочего дня",
+    json_value=end_hour,
 )
-wednesday_start_hour = Setting(
-    setting_code="wednesday_start_hour",
-    setting_describe="Начало рабочего дня в среду",
-    number_value=9,
-)
-thursday_start_hour = Setting(
-    setting_code="thursday_start_hour",
-    setting_describe="Начало рабочего дня в четверг",
-    number_value=9,
-)
-friday_start_hour = Setting(
-    setting_code="friday_start_hour",
-    setting_describe="Начало рабочего дня в пятницу",
-    number_value=9,
-)
-saturday_start_hour = Setting(
-    setting_code="saturday_start_hour",
-    setting_describe="Начало рабочего дня в субботу",
-    number_value=9,
-)
-sunday_start_hour = Setting(
-    setting_code="sunday_start_hour",
-    setting_describe="Начало рабочего дня в воскресенье",
-    number_value=9,
-)
-
-monday_end_hour = Setting(
-    setting_code="monday_end_hour",
-    setting_describe="Конец рабочего дня в понедельник",
-    number_value=18,
-)
-tuesday_end_hour = Setting(
-    setting_code="tuesday_end_hour",
-    setting_describe="Конец рабочего дня в вторник",
-    number_value=18,
-)
-wednesday_end_hour = Setting(
-    setting_code="wednesday_end_hour",
-    setting_describe="Конец рабочего дня в среду",
-    number_value=18,
-)
-thursday_end_hour = Setting(
-    setting_code="thursday_end_hour",
-    setting_describe="Конец рабочего дня в четверг",
-    number_value=18,
-)
-friday_end_hour = Setting(
-    setting_code="friday_end_hour",
-    setting_describe="Конец рабочего дня в пятницу",
-    number_value=18,
-)
-saturday_end_hour = Setting(
-    setting_code="saturday_end_hour",
-    setting_describe="Конец рабочего дня в субботу",
-    number_value=16,
-)
-sunday_end_hour = Setting(
-    setting_code="sunday_end_hour",
-    setting_describe="Конец рабочего дня в воскресенье",
-    number_value=16,
-)
-
-Session = sessionmaker(bind=engine) # создание базового шалона открытия сессии
 with Session() as session: # открытие сессии транзакции
     #добавление данных
     session.add_all(
         [
+            start_hour_scheduler,
+            end_hour_scheduler,
             session_time_hour,
-            monday_start_hour,
-            tuesday_start_hour,
-            wednesday_start_hour,
-            thursday_start_hour,
-            friday_start_hour,
-            saturday_start_hour,
-            sunday_start_hour,
-            monday_end_hour,
-            tuesday_end_hour,
-            wednesday_end_hour,
-            thursday_end_hour,
-            friday_end_hour,
-            saturday_end_hour,
-            sunday_end_hour,
         ]
     )
     #print(session.new)
     session.commit()
 
-print(session.query(Setting.id).all())
+# monday_start_hour = Setting(
+#     setting_code="monday_start_hour",
+#     setting_describe="Начало рабочего дня в понедельник",
+#     number_value=9,
+# )
+# tuesday_start_hour = Setting(
+#     setting_code="tuesday_start_hour",
+#     setting_describe="Начало рабочего дня в вторник",
+#     number_value=9,
+# )
+# wednesday_start_hour = Setting(
+#     setting_code="wednesday_start_hour",
+#     setting_describe="Начало рабочего дня в среду",
+#     number_value=9,
+# )
+# thursday_start_hour = Setting(
+#     setting_code="thursday_start_hour",
+#     setting_describe="Начало рабочего дня в четверг",
+#     number_value=9,
+# )
+# friday_start_hour = Setting(
+#     setting_code="friday_start_hour",
+#     setting_describe="Начало рабочего дня в пятницу",
+#     number_value=9,
+# )
+# saturday_start_hour = Setting(
+#     setting_code="saturday_start_hour",
+#     setting_describe="Начало рабочего дня в субботу",
+#     number_value=9,
+# )
+# sunday_start_hour = Setting(
+#     setting_code="sunday_start_hour",
+#     setting_describe="Начало рабочего дня в воскресенье",
+#     number_value=9,
+# )
+#
+# monday_end_hour = Setting(
+#     setting_code="monday_end_hour",
+#     setting_describe="Конец рабочего дня в понедельник",
+#     number_value=18,
+# )
+# tuesday_end_hour = Setting(
+#     setting_code="tuesday_end_hour",
+#     setting_describe="Конец рабочего дня в вторник",
+#     number_value=18,
+# )
+# wednesday_end_hour = Setting(
+#     setting_code="wednesday_end_hour",
+#     setting_describe="Конец рабочего дня в среду",
+#     number_value=18,
+# )
+# thursday_end_hour = Setting(
+#     setting_code="thursday_end_hour",
+#     setting_describe="Конец рабочего дня в четверг",
+#     number_value=18,
+# )
+# friday_end_hour = Setting(
+#     setting_code="friday_end_hour",
+#     setting_describe="Конец рабочего дня в пятницу",
+#     number_value=18,
+# )
+# saturday_end_hour = Setting(
+#     setting_code="saturday_end_hour",
+#     setting_describe="Конец рабочего дня в субботу",
+#     number_value=16,
+# )
+# sunday_end_hour = Setting(
+#     setting_code="sunday_end_hour",
+#     setting_describe="Конец рабочего дня в воскресенье",
+#     number_value=16,
+# )
+
+# with Session() as session: # открытие сессии транзакции
+#     #добавление данных
+#     session.add_all(
+#         [
+#             session_time_hour,
+#             monday_start_hour,
+#             tuesday_start_hour,
+#             wednesday_start_hour,
+#             thursday_start_hour,
+#             friday_start_hour,
+#             saturday_start_hour,
+#             sunday_start_hour,
+#             monday_end_hour,
+#             tuesday_end_hour,
+#             wednesday_end_hour,
+#             thursday_end_hour,
+#             friday_end_hour,
+#             saturday_end_hour,
+#             sunday_end_hour,
+#         ]
+#     )
+#     #print(session.new)
+#     session.commit()
