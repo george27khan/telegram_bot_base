@@ -5,7 +5,7 @@ import json
 import logging
 
 import asyncio
-from aiogram import Bot, types, Dispatcher
+from aiogram import Bot, types,Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters import Text
@@ -27,7 +27,6 @@ from sqlalchemy import (
     Integer,
     Numeric,
     Column,
-    Text,
     DateTime,
     Boolean,
     ForeignKey,
@@ -99,9 +98,15 @@ def get_calendar_keyboard():
 
 @dp.message_handler(commands="calendar")
 async def make_calendar(message: types.Message):
+    await Booking.choose_day.set()  # встаем в состояние выбора дня
     await message.answer("Выберите дату для бронирования", reply_markup=get_calendar_keyboard())
-    await Booking.choose_day.set() #встаем в состояние выбора дня
     await message.answer('Напиши текст рассылки')
+
+@dp.callback_query_handler(Text(startswith="day_"))
+async def callback_empty(call: types.CallbackQuery, state: FSMContext):
+    print(2)
+    await call.answer()
+    return
 
 @dp.message_handler(state=Booking.choose_day.state)
 async def get_day(message: types.Message, state: FSMContext):
@@ -119,33 +124,34 @@ async def get_day(message: types.Message, state: FSMContext):
     await state.set_state(Booking.choose_time.state)
     await message.answer("Теперь выберите время записи:", reply_markup=keyboard)
 
-
-class UserState(StatesGroup):
-    name = State()
-    address = State()
-
-
-@dp.message_handler(commands=['reg'])
-async def user_register(message: types.Message):
-    await message.answer("Введите своё имя")
-    await UserState.name.set()
-
-
-@dp.message_handler(state=UserState.name)
-async def get_username(message: types.Message, state: FSMContext):
-    await state.update_data(username=message.text)
-    await message.answer("Отлично! Теперь введите ваш адрес.")
-    await UserState.next()  # либо же UserState.adress.set()
-
-
-@dp.message_handler(state=UserState.address)
-async def get_address(message: types.Message, state: FSMContext):
-    await state.update_data(address=message.text)
-    data = await state.get_data()
-    await message.answer(f"Имя: {data['username']}\n"
-                         f"Адрес: {data['address']}")
-
-    await state.finish()
+#
+# class UserState(StatesGroup):
+#     name = State()
+#     address = State()
+#
+#
+# @dp.message_handler(commands=['reg'])
+# async def user_register(message: types.Message):
+#     await message.answer("Введите своё имя")
+#     await UserState.name.set()
+#
+#
+# @dp.message_handler(state=UserState.name)
+# async def get_username(message: types.Message, state: FSMContext):
+#     await state.update_data(username=message.text)
+#     await message.answer("Отлично! Теперь введите ваш адрес.")
+#     await UserState.next()  # либо же UserState.adress.set()
+#
+#
+#
+# @dp.message_handler(state=UserState.address)
+# async def get_address(message: types.Message, state: FSMContext):
+#     await state.update_data(address=message.text)
+#     data = await state.get_data()
+#     await message.answer(f"Имя: {data['username']}\n"
+#                          f"Адрес: {data['address']}")
+#
+#     await state.finish()
 
 
 # @dp.callback_query_handler(Text(startswith=["week_day_empty", "week_day_"]))
