@@ -5,7 +5,7 @@ import json
 import logging
 
 import asyncio
-from aiogram import Bot, types,Dispatcher
+from aiogram import Bot, types, Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters import Text
@@ -47,6 +47,7 @@ def load_settings():
         g_hour_end_d = json.loads(session.get(Setting, "end_hour_scheduler").json_value)
         g_session_time = session.get(Setting, "session_time_hour").number_value
 load_settings()
+
 def get_time_format(hour: float) -> str:
     return f'{int(hour // 1)}:{int(hour % 1 * 60):02}'
 
@@ -72,11 +73,11 @@ def get_time_keyboard():
         button_text = f"{get_time_format(start_hour)}-{get_time_format(start_hour + g_session_time)}"
         buttons.append(types.InlineKeyboardButton(text=button_text, callback_data=f"interval_{start_hour}"))
         start_hour += g_session_time
-    keyboard = types.InlineKeyboardMarkup(row_width=5)
+    keyboard = types.InlineKeyboardMarkup(row_width=4)
     keyboard.add(*buttons)
     return keyboard
 
-def get_calendar_keyboard():
+def get_calendar_keyboard(base_date: dt.datetime) -> types.InlineKeyboardMarkup:
     lang = 'en'
     days_in_month = 31
     map_day_to_name_ru = {1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 7: 'Вс'}
@@ -84,9 +85,9 @@ def get_calendar_keyboard():
     week_ru = {'Mon': 'Пн', 'Tue': 'Вт', 'Wed': 'Ср', 'Thu': 'Чт', 'Fri': 'Пт', 'Sat': 'Сб', 'Sun': 'Вс'}
     days_of_week = list(g_hour_start_d.keys())
 
-    cur_month_name = dt.datetime.today().strftime("%B")
-    cur_day = dt.datetime.today().day
-    num_day_of_week = dt.datetime.today().weekday()
+    cur_month_name = base_date.strftime("%B")
+    cur_day = base_date.day
+    num_day_of_week = base_date.weekday()
 
     # шапка календаря
     buttons = [types.InlineKeyboardButton(text=day_name, callback_data=f"week_day_{day}") for day, day_name in enumerate(days_of_week)]
@@ -102,7 +103,7 @@ def get_calendar_keyboard():
     last_week_len = len(buttons) % 7
     if 0 < last_week_len < 7:
         for empty in range(0, 7 - last_week_len):
-            buttons.append(types.InlineKeyboardButton(text=' ', callback_data=f"empty_day"))
+            buttons.append(types.InlineKeyboardButton(text=' ', callback_data=f"empty_day",))
 
     buttons.append(types.InlineKeyboardButton(text='предыдущий месяц', callback_data=f"prev_month"))
     buttons.append(types.InlineKeyboardButton(text='следующий месяц', callback_data=f"next_month"))
@@ -113,15 +114,14 @@ def get_calendar_keyboard():
 @dp.message_handler(commands="calendar")
 async def make_calendar(message: types.Message):
     await Booking.choose_day.set()  # встаем в состояние выбора дня
-    await message.answer("Выберите дату для бронирования", reply_markup=get_calendar_keyboard())
+    await message.answer("Выберите дату для бронирования", reply_markup=get_calendar_keyboard(dt.datetime.today()))
 
 @dp.callback_query_handler(Text(startswith=["empty_day"]), state=Booking.choose_day)
 async def callback_empty(call: types.CallbackQuery, state: FSMContext):
-    await call.answer()
+    await call.answer() call.
 
 @dp.callback_query_handler(Text(startswith=["day_"]), state=Booking.choose_day)
 async def callback_empty(call: types.CallbackQuery, state: FSMContext):
-    print(2)
     await Booking.choose_time.set()  # встаем в состояние выбора дня
     await call.message.answer("Выберите время для бронирования", reply_markup=get_time_keyboard())
 
@@ -136,7 +136,7 @@ async def get_day(message: types.Message, state: FSMContext):
     await state.update_data(chosen_day=message.text.lower())
 
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    for size in [1,2,3]:
+    for size in [1, 2, 3]:
         keyboard.add(size)
     await state.set_state(Booking.choose_time.state)
     await message.answer("Теперь выберите время записи:", reply_markup=keyboard)

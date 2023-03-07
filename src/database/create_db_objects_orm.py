@@ -47,7 +47,8 @@ class Scheduler(Base):
     id = Column(Integer(), primary_key=True)
     id_user = Column(Integer(), ForeignKey("user.id"), nullable=False)
     id_employee = Column(Integer(), ForeignKey("employee.id"), nullable=False)
-    visit_dt = Column(DateTime(), nullable=False, comment="Дата и время бронирования")
+    start_dt = Column(DateTime(), nullable=False, comment="Дата и время начала бронирования")
+    end_dt = Column(DateTime(), nullable=False, comment="Дата и время окончания бронирования")
     created_dt = Column(DateTime(), server_default=func.now(), nullable=False)
     updated_on = Column(
         DateTime(),
