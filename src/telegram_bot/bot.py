@@ -1,6 +1,8 @@
 import os
 from dotenv import load_dotenv
 import datetime as dt
+from dateutil.relativedelta import relativedelta
+import calendar
 import json
 import logging
 
@@ -63,12 +65,12 @@ class Booking(StatesGroup):
     choose_day = State()
     choose_time = State()
 
-def get_time_keyboard():
+def get_time_keyboard(chosen_date: dt.datetime):
     buttons = []
-    cur_day_name = dt.datetime.today().strftime("%a")
+    cur_day_name = chosen_date.strftime("%a")
     start_hour = g_hour_start_d[cur_day_name]
     end_hour = g_hour_end_d[cur_day_name]
-
+    dt.time(hour=int(start_hour), minute=int((start_hour % 1) * 60))
     while start_hour < end_hour:
         button_text = f"{get_time_format(start_hour)}-{get_time_format(start_hour + g_session_time)}"
         buttons.append(types.InlineKeyboardButton(text=button_text, callback_data=f"interval_{start_hour}"))
@@ -77,53 +79,78 @@ def get_time_keyboard():
     keyboard.add(*buttons)
     return keyboard
 
-def get_calendar_keyboard(base_date: dt.datetime) -> types.InlineKeyboardMarkup:
+def get_calendar_keyboard(base_date: dt.date) -> types.InlineKeyboardMarkup:
     lang = 'en'
-    days_in_month = 31
+    max_calendar_month = 2
+    current_month = dt.date.today().month
+    days_in_month = calendar.monthrange(base_date.year, base_date.month)[1]
+    first_month_date = base_date.replace(day=1)
+    dates_of_month = [first_month_date + dt.timedelta(day) for day in range(days_in_month)]
     map_day_to_name_ru = {1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 7: 'Вс'}
     map_day_to_name_en = {1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 7: 'Sun'}
     week_ru = {'Mon': 'Пн', 'Tue': 'Вт', 'Wed': 'Ср', 'Thu': 'Чт', 'Fri': 'Пт', 'Sat': 'Сб', 'Sun': 'Вс'}
-    days_of_week = list(g_hour_start_d.keys())
 
+    days_of_week = list(g_hour_start_d.keys())
     cur_month_name = base_date.strftime("%B")
     cur_day = base_date.day
-    num_day_of_week = base_date.weekday()
 
     # шапка календаря
     buttons = [types.InlineKeyboardButton(text=day_name, callback_data=f"week_day_{day}") for day, day_name in enumerate(days_of_week)]
 
     # выравнивание календаря в начале
-    for empty in range(0, num_day_of_week):
+    for empty in range(0, first_month_date.weekday()):
         buttons.append(types.InlineKeyboardButton(text=' ', callback_data=f"empty_day"))
 
-    for day in range(1, days_in_month + 1):
-        buttons.append(types.InlineKeyboardButton(text=str(day), callback_data=f"day_{day}"))
+    for day, date in enumerate(dates_of_month):
+        if date < dt.date.today():
+            buttons.append(types.InlineKeyboardButton(text=str(day + 1), callback_data=f"empty_day"))
+        else:
+            buttons.append(types.InlineKeyboardButton(text=str(day + 1), callback_data=f"day_{date.strftime('''%d.%m.%Y''')}" ))
 
     # выравнивание календаря в конце
     last_week_len = len(buttons) % 7
     if 0 < last_week_len < 7:
         for empty in range(0, 7 - last_week_len):
-            buttons.append(types.InlineKeyboardButton(text=' ', callback_data=f"empty_day",))
-
-    buttons.append(types.InlineKeyboardButton(text='предыдущий месяц', callback_data=f"prev_month"))
-    buttons.append(types.InlineKeyboardButton(text='следующий месяц', callback_data=f"next_month"))
+            buttons.append(types.InlineKeyboardButton(text=' ', callback_data=f"empty_day"))
+    if base_date.month > current_month:
+        buttons.append(types.InlineKeyboardButton(text='предыдущий месяц', callback_data=f"prev_month"))
+    if base_date.month < current_month + max_calendar_month:
+        buttons.append(types.InlineKeyboardButton(text='следующий месяц', callback_data=f"next_month"))
     keyboard = types.InlineKeyboardMarkup(row_width=7)
     keyboard.add(*buttons)
     return keyboard
+@dp.callback_query_handler(Text(startswith=["next_month"]), state=Booking.choose_day)
+async def make_calendar_next(call: types.CallbackQuery, state: FSMContext):
+    state_data = await state.get_data()
+    next_date = state_data['state_cutrrent_date'] + relativedelta(months=1)
+    await call.message.answer("Выберите дату для бронирования", reply_markup=get_calendar_keyboard(next_date))
+    await state.update_data(state_cutrrent_date=next_date)
+    await call.answer()
+
+@dp.callback_query_handler(Text(startswith=["prev_month"]), state=Booking.choose_day)
+async def make_calendar_prev(call: types.CallbackQuery, state: FSMContext):
+    state_data = await state.get_data()
+    prev_date = state_data['state_cutrrent_date'] - relativedelta(months=1)
+    await call.message.answer("Выберите дату для бронирования", reply_markup=get_calendar_keyboard(prev_date))
+    await state.update_data(state_cutrrent_date=prev_date)
+    await call.answer()
 
 @dp.message_handler(commands="calendar")
-async def make_calendar(message: types.Message):
+async def make_calendar(message: types.Message, state: FSMContext):
+    await message.answer("Выберите дату для бронирования", reply_markup=get_calendar_keyboard(dt.date.today()))
+    await state.update_data(state_cutrrent_date=dt.date.today())
     await Booking.choose_day.set()  # встаем в состояние выбора дня
-    await message.answer("Выберите дату для бронирования", reply_markup=get_calendar_keyboard(dt.datetime.today()))
 
 @dp.callback_query_handler(Text(startswith=["empty_day"]), state=Booking.choose_day)
-async def callback_empty(call: types.CallbackQuery, state: FSMContext):
-    await call.answer() call.
+async def callback_empty(call: types.CallbackQuery):
+    await call.answer()
 
 @dp.callback_query_handler(Text(startswith=["day_"]), state=Booking.choose_day)
 async def callback_empty(call: types.CallbackQuery, state: FSMContext):
+    button_datetime = dt.datetime.strptime(call.data[4:], '''%d.%m.%Y''')
+    print(button_datetime)
     await Booking.choose_time.set()  # встаем в состояние выбора дня
-    await call.message.answer("Выберите время для бронирования", reply_markup=get_time_keyboard())
+    await call.message.answer("Выберите время для бронирования", reply_markup=get_time_keyboard(button_datetime))
 
 @dp.message_handler(state=Booking.choose_day.state)
 async def get_day(message: types.Message, state: FSMContext):
