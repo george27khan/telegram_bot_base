@@ -70,11 +70,15 @@ def get_time_keyboard(chosen_date: dt.datetime):
     cur_day_name = chosen_date.strftime("%a")
     start_hour = g_hour_start_d[cur_day_name]
     end_hour = g_hour_end_d[cur_day_name]
-    dt.time(hour=int(start_hour), minute=int((start_hour % 1) * 60))
-    while start_hour < end_hour:
-        button_text = f"{get_time_format(start_hour)}-{get_time_format(start_hour + g_session_time)}"
-        buttons.append(types.InlineKeyboardButton(text=button_text, callback_data=f"interval_{start_hour}"))
-        start_hour += g_session_time
+    start_time = chosen_date.replace(hour=int(start_hour), minute=int((start_hour % 1) * 60))
+    end_time = chosen_date.replace(hour=int(end_hour), minute=int((end_hour % 1) * 60))
+    while start_time < end_time:
+        next_time = start_time + dt.timedelta(hours=int(g_session_time), minutes=int((g_session_time % 1) * 60))
+        button_text = f"{start_time.strftime('''%H:%M''')}-{next_time.strftime('''%H:%M''')}"
+        buttons.append(types.InlineKeyboardButton(text=button_text, callback_data=f"time_{button_text}",
+                                                  start_time = str(start_time),
+                                                  end_time = str(end_time)))
+        start_time = next_time
     keyboard = types.InlineKeyboardMarkup(row_width=4)
     keyboard.add(*buttons)
     return keyboard
@@ -119,26 +123,27 @@ def get_calendar_keyboard(base_date: dt.date) -> types.InlineKeyboardMarkup:
     keyboard = types.InlineKeyboardMarkup(row_width=7)
     keyboard.add(*buttons)
     return keyboard
+
 @dp.callback_query_handler(Text(startswith=["next_month"]), state=Booking.choose_day)
 async def make_calendar_next(call: types.CallbackQuery, state: FSMContext):
     state_data = await state.get_data()
-    next_date = state_data['state_cutrrent_date'] + relativedelta(months=1)
+    next_date = state_data['state_current_date'] + relativedelta(months=1)
     await call.message.answer("Выберите дату для бронирования", reply_markup=get_calendar_keyboard(next_date))
-    await state.update_data(state_cutrrent_date=next_date)
+    await state.update_data(state_current_date=next_date)
     await call.answer()
 
 @dp.callback_query_handler(Text(startswith=["prev_month"]), state=Booking.choose_day)
 async def make_calendar_prev(call: types.CallbackQuery, state: FSMContext):
     state_data = await state.get_data()
-    prev_date = state_data['state_cutrrent_date'] - relativedelta(months=1)
+    prev_date = state_data['state_current_date'] - relativedelta(months=1)
     await call.message.answer("Выберите дату для бронирования", reply_markup=get_calendar_keyboard(prev_date))
-    await state.update_data(state_cutrrent_date=prev_date)
+    await state.update_data(state_current_date=prev_date)
     await call.answer()
 
 @dp.message_handler(commands="calendar")
 async def make_calendar(message: types.Message, state: FSMContext):
     await message.answer("Выберите дату для бронирования", reply_markup=get_calendar_keyboard(dt.date.today()))
-    await state.update_data(state_cutrrent_date=dt.date.today())
+    await state.update_data(state_current_date=dt.date.today())
     await Booking.choose_day.set()  # встаем в состояние выбора дня
 
 @dp.callback_query_handler(Text(startswith=["empty_day"]), state=Booking.choose_day)
@@ -146,7 +151,13 @@ async def callback_empty(call: types.CallbackQuery):
     await call.answer()
 
 @dp.callback_query_handler(Text(startswith=["day_"]), state=Booking.choose_day)
-async def callback_empty(call: types.CallbackQuery, state: FSMContext):
+async def callback_choose_day(call: types.CallbackQuery, state: FSMContext):
+    button_datetime = dt.datetime.strptime(call.data[4:], '''%d.%m.%Y''')
+    print(button_datetime)
+    await Booking.choose_time.set()  # встаем в состояние выбора дня
+    await call.message.answer("Выберите время для бронирования", reply_markup=get_time_keyboard(button_datetime))
+@dp.callback_query_handler(Text(startswith=["time_"]), state=Booking.choose_time)
+async def callback_choose_time(call: types.CallbackQuery, state: FSMContext):
     button_datetime = dt.datetime.strptime(call.data[4:], '''%d.%m.%Y''')
     print(button_datetime)
     await Booking.choose_time.set()  # встаем в состояние выбора дня
