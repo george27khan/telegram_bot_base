@@ -75,9 +75,7 @@ def get_time_keyboard(chosen_date: dt.datetime):
     while start_time < end_time:
         next_time = start_time + dt.timedelta(hours=int(g_session_time), minutes=int((g_session_time % 1) * 60))
         button_text = f"{start_time.strftime('''%H:%M''')}-{next_time.strftime('''%H:%M''')}"
-        buttons.append(types.InlineKeyboardButton(text=button_text, callback_data=f"time_{button_text}",
-                                                  start_time = str(start_time),
-                                                  end_time = str(end_time)))
+        buttons.append(types.InlineKeyboardButton(text=button_text, callback_data=f"{start_time},{end_time}"))
         start_time = next_time
     keyboard = types.InlineKeyboardMarkup(row_width=4)
     keyboard.add(*buttons)
@@ -156,10 +154,12 @@ async def callback_choose_day(call: types.CallbackQuery, state: FSMContext):
     print(button_datetime)
     await Booking.choose_time.set()  # встаем в состояние выбора дня
     await call.message.answer("Выберите время для бронирования", reply_markup=get_time_keyboard(button_datetime))
-@dp.callback_query_handler(Text(startswith=["time_"]), state=Booking.choose_time)
+@dp.callback_query_handler(state=Booking.choose_time)
 async def callback_choose_time(call: types.CallbackQuery, state: FSMContext):
+    print(call.data)
+    print(call.message)
+    start_time, end_time = split
     button_datetime = dt.datetime.strptime(call.data[4:], '''%d.%m.%Y''')
-    print(button_datetime)
     await Booking.choose_time.set()  # встаем в состояние выбора дня
     await call.message.answer("Выберите время для бронирования", reply_markup=get_time_keyboard(button_datetime))
 
