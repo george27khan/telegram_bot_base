@@ -107,6 +107,9 @@ def get_time_keyboard(chosen_date: dt.datetime):
             )
         )
         start_time = next_time
+    buttons.append(
+        types.InlineKeyboardButton(
+            text="Вернуться к выбору дня", callback_data=f"current_month"))
     keyboard = types.InlineKeyboardMarkup(row_width=4)
     keyboard.add(*buttons)
     return keyboard
@@ -147,7 +150,7 @@ def get_calendar_keyboard(base_date: dt.date) -> types.InlineKeyboardMarkup:
 
     # шапка календаря
     buttons = [
-        types.InlineKeyboardButton(text=day_name, callback_data=f"week_day_{day}")
+        types.InlineKeyboardButton(text=day_name, callback_data=f"week_day")
         for day, day_name in enumerate(days_of_week)
     ]
 
@@ -193,13 +196,19 @@ def get_calendar_keyboard(base_date: dt.date) -> types.InlineKeyboardMarkup:
     keyboard.add(*buttons)
     return keyboard
 
+@dp.message_handler(commands="start")
+async def cmd_start(message: types.Message):
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    buttons = ["Оформить бронь"]
+    keyboard.add(*buttons)
+    await message.answer("Выберите действие:", reply_markup=keyboard)
 
 @dp.callback_query_handler(Text(startswith=["next_month"]), state=Booking.choose_day)
 async def make_calendar_next(call: types.CallbackQuery, state: FSMContext):
     state_data = await state.get_data()
     next_date = state_data["state_current_date"] + relativedelta(months=1)
     await call.message.answer(
-        "Выберите дату для бронирования", reply_markup=get_calendar_keyboard(next_date)
+        "Выберите дату бронирования:", reply_markup=get_calendar_keyboard(next_date)
     )
     await state.update_data(state_current_date=next_date)
     await call.answer()
@@ -210,42 +219,50 @@ async def make_calendar_prev(call: types.CallbackQuery, state: FSMContext):
     state_data = await state.get_data()
     prev_date = state_data["state_current_date"] - relativedelta(months=1)
     await call.message.answer(
-        "Выберите дату для бронирования", reply_markup=get_calendar_keyboard(prev_date)
+        "Выберите дату бронирования:", reply_markup=get_calendar_keyboard(prev_date)
     )
     await state.update_data(state_current_date=prev_date)
     await call.answer()
 
-
-@dp.message_handler(commands="calendar")
+@dp.message_handler(Text(startswith=["current_month"]), state=Booking.choose_day)
 async def make_calendar(message: types.Message, state: FSMContext):
     await message.answer(
-        "Выберите дату для бронирования",
+        "Выберите дату бронирования:",
         reply_markup=get_calendar_keyboard(dt.date.today()),
     )
     await state.update_data(state_current_date=dt.date.today())
     await Booking.choose_day.set()  # встаем в состояние выбора дня
 
 
-@dp.callback_query_handler(Text(startswith=["empty_day"]), state=Booking.choose_day)
-async def callback_empty(call: types.CallbackQuery):
-    await call.answer()
+@dp.message_handler(Text(equals="Оформить бронь"))
+async def make_calendar(message: types.Message, state: FSMContext):
+    await message.answer(
+        "Выберите дату бронирования:",
+        reply_markup=get_calendar_keyboard(dt.date.today()),
+    )
+    await state.update_data(state_current_date=dt.date.today())
+    await Booking.choose_day.set()  # встаем в состояние выбора дня
 
 
-@dp.callback_query_handler(Text(startswith=["day_"]), state=Booking.choose_day)
-async def callback_choose_day(call: types.CallbackQuery, state: FSMContext):
+# @dp.callback_query_handler(Text(startswith=["empty_day"]), state=Booking.choose_day)
+# async def callback_empty(call: types.CallbackQuery):
+#     await call.answer()
+
+
+@dp.callback_query_handler(state=Booking.choose_day)
+async def callback_choose_day(call: types.CallbackQuery):
+    if call.data in ("empty_day", "week_day"):
+        await call.answer()
+        return
     button_datetime = dt.datetime.strptime(call.data[4:], g_date_format)
-    print(button_datetime)
     await Booking.choose_time.set()  # встаем в состояние выбора дня
     await call.message.answer(
-        "Выберите время для бронирования",
+        "Выберите время бронирования:",
         reply_markup=get_time_keyboard(button_datetime),
     )
 
-
 @dp.callback_query_handler(state=Booking.choose_time)
 async def callback_choose_time(call: types.CallbackQuery, state: FSMContext):
-    print(call.data)
-    print(call.message.chat)
     start_datetime, end_datetime = [
         dt.datetime.strptime(dt_str, g_datetime_format)
         for dt_str in call.data.split(",")
@@ -267,17 +284,13 @@ async def callback_choose_time(call: types.CallbackQuery, state: FSMContext):
             s.add(user_obj)
             s.commit()
         except sql_exc.IntegrityError:
-            print(s.new, 2)
-            s.rollback()
+             s.rollback()
         s.add(scheduler_obj)
-        print(s.new,3)
         s.commit()
-    await call.answer(text="Бронирование прошло успешно", show_alert=True)
-
-    # button_datetime = dt.datetime.strptime(call.data[4:], '''%d.%m.%Y''')
-    # await Booking.choose_time.set()  # встаем в состояние выбора дня
-    # await call.message.answer("Выберите время для бронирования", reply_markup=get_time_keyboard(button_datetime))
-
+    await call.answer(text=f"Оформлено бронирование на {start_datetime.strftime(g_date_format)} c "
+                           f"{start_datetime.strftime(g_time_format)} по {end_datetime.strftime(g_time_format)}",
+                      show_alert=True)
+    await state.finish()
 
 #
 # class UserState(StatesGroup):
