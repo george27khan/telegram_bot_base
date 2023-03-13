@@ -5,6 +5,7 @@ services:
     container_name: postgres
     image: postgres
     restart: always
+    command: postgres -c timezone=posix/Asia/Almaty -c log_timezone=posix/Asia/Almaty
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}

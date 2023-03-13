@@ -20,5 +20,4 @@ engine = create_engine(
     # ,echo=True
 )
 
-Session = sessionmaker(bind=engine) # создание базового шалона открытия сессии
-
+Session = sessionmaker(bind=engine)  # создание базового шалона открытия сессии
