@@ -128,14 +128,24 @@ class Setting(Base):
     )
     __table_args__ = (Index("idx_pk_settings", "setting_code"),)
 
-
-def init_database():
-    # #отчистка базы от таблиц
-    Base.metadata.drop_all(engine)
-    #
-    # #создание в базе всех описанных таблицы
-    Base.metadata.create_all(engine)
-
+def init_position():
+    p1 = Position(position_name="Младший специалист")
+    p2 = Position(position_name="Специалист")
+    p3 = Position(position_name="Ведущий специалист")
+    p4 = Position(position_name="Старший специалист")
+    p5 = Position(position_name="Главный специалист")
+    with Session() as s:  # открытие сессии транзакции
+        s.add_all(
+            [
+                p1,
+                p2,
+                p3,
+                p4,
+                p5
+            ]
+        )
+        s.commit()
+def init_setting():
     session_time_hour = Setting(
         setting_code="session_time_hour",
         setting_describe="Продолжительность приема в часах",
@@ -158,7 +168,6 @@ def init_database():
         json_value=end_hour,
     )
     with Session() as s:  # открытие сессии транзакции
-        # добавление данных
         s.add_all(
             [
                 start_hour_scheduler,
@@ -166,7 +175,16 @@ def init_database():
                 session_time_hour,
             ]
         )
-        # print(session.new)
         s.commit()
+
+def init_database():
+    # #отчистка базы от таблиц
+    Base.metadata.drop_all(engine)
+    # #создание в базе всех описанных таблицы
+    Base.metadata.create_all(engine)
+    init_setting()
+    init_position()
+
+
 
 # init_database()

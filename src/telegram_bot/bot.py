@@ -6,35 +6,14 @@ import calendar
 import json
 import logging
 
-import asyncio
 from aiogram import Bot, types, Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters import Text
-
 from aiogram.dispatcher.filters.state import State, StatesGroup
-
-from src.database import engine, Session, Setting, Scheduler, User
-
-
+from src.database import Session, Setting, Scheduler, User, Employee
 from sqlalchemy import exc as sql_exc
-from sqlalchemy import (
-    create_engine,
-    insert,
-    MetaData,
-    Table,
-    String,
-    Time,
-    Integer,
-    Numeric,
-    Column,
-    DateTime,
-    Boolean,
-    ForeignKey,
-    Index,
-)
-from sqlalchemy.orm import relationship, sessionmaker, declarative_base
-from sqlalchemy.sql import func
+
 
 g_hour_start_d = {"Mon": 9, "Tue": 9, "Wed": 9, "Thu": 9, "Fri": 9, "Sat": 9, "Sun": 9}
 g_hour_end_d = {
@@ -53,6 +32,7 @@ g_date_format = "%d.%m.%Y"
 g_time_format = "%H:%M"
 
 
+# загрузка настроек из бд
 def load_settings():
     global g_hour_start_d, g_hour_end_d, g_session_time
     with Session() as session:
@@ -65,26 +45,24 @@ def load_settings():
 
 load_settings()
 
-
-def get_time_format(hour: float) -> str:
-    return f"{int(hour // 1)}:{int(hour % 1 * 60):02}"
-
-
+# инициализация бота
 dotenv_path = os.path.join(os.path.dirname(__file__), "../../.env")
 if os.path.exists(dotenv_path):
     load_dotenv(dotenv_path)
-
 TELEGRAMM_BOT_TOKEN = os.getenv("TELEGRAMM_BOT_TOKEN")
 bot = Bot(token=TELEGRAMM_BOT_TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
 
 
+# класс состояний бронирования
 class Booking(StatesGroup):
-    choose_day = State()
-    choose_time = State()
+    start = State()
+    choose_day = State()  # выбор дня
+    choose_time = State()  # выбор времени
 
 
-def get_time_keyboard(chosen_date: dt.datetime):
+# формирование inline keyboard для выбора времени
+def get_time_keyboard(chosen_date: dt.datetime) -> types.InlineKeyboardMarkup:
     buttons = []
     cur_day_name = chosen_date.strftime("%a")
     start_hour = g_hour_start_d[cur_day_name]
@@ -109,12 +87,15 @@ def get_time_keyboard(chosen_date: dt.datetime):
         start_time = next_time
     buttons.append(
         types.InlineKeyboardButton(
-            text="Вернуться к выбору дня", callback_data=f"current_month"))
+            text="Вернуться к выбору дня", callback_data=f"current_month"
+        )
+    )
     keyboard = types.InlineKeyboardMarkup(row_width=4)
     keyboard.add(*buttons)
     return keyboard
 
 
+# формирование inline keyboard для выбора даты
 def get_calendar_keyboard(base_date: dt.date) -> types.InlineKeyboardMarkup:
     lang = "en"
     max_calendar_month = 2
@@ -124,16 +105,6 @@ def get_calendar_keyboard(base_date: dt.date) -> types.InlineKeyboardMarkup:
     dates_of_month = [
         first_month_date + dt.timedelta(day) for day in range(days_in_month)
     ]
-    map_day_to_name_ru = {1: "Пн", 2: "Вт", 3: "Ср", 4: "Чт", 5: "Пт", 6: "Сб", 7: "Вс"}
-    map_day_to_name_en = {
-        1: "Mon",
-        2: "Tue",
-        3: "Wed",
-        4: "Thu",
-        5: "Fri",
-        6: "Sat",
-        7: "Sun",
-    }
     week_ru = {
         "Mon": "Пн",
         "Tue": "Вт",
@@ -143,17 +114,13 @@ def get_calendar_keyboard(base_date: dt.date) -> types.InlineKeyboardMarkup:
         "Sat": "Сб",
         "Sun": "Вс",
     }
-
     days_of_week = list(g_hour_start_d.keys())
-    cur_month_name = base_date.strftime("%B")
-    cur_day = base_date.day
 
     # шапка календаря
     buttons = [
         types.InlineKeyboardButton(text=day_name, callback_data=f"week_day")
         for day, day_name in enumerate(days_of_week)
     ]
-
     # выравнивание календаря в начале
     for empty in range(0, first_month_date.weekday()):
         buttons.append(types.InlineKeyboardButton(text=" ", callback_data=f"empty_day"))
@@ -196,13 +163,16 @@ def get_calendar_keyboard(base_date: dt.date) -> types.InlineKeyboardMarkup:
     keyboard.add(*buttons)
     return keyboard
 
+# начальное меню
 @dp.message_handler(commands="start")
-async def cmd_start(message: types.Message):
+async def main_menu(message: types.Message):
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    buttons = ["Оформить бронь"]
+    buttons = ["Оформить бронь", "Добавить сотрудника"]
     keyboard.add(*buttons)
     await message.answer("Выберите действие:", reply_markup=keyboard)
 
+
+# формирование следующего месяца
 @dp.callback_query_handler(Text(startswith=["next_month"]), state=Booking.choose_day)
 async def make_calendar_next(call: types.CallbackQuery, state: FSMContext):
     state_data = await state.get_data()
@@ -214,6 +184,7 @@ async def make_calendar_next(call: types.CallbackQuery, state: FSMContext):
     await call.answer()
 
 
+# формирование предыдущего месяца
 @dp.callback_query_handler(Text(startswith=["prev_month"]), state=Booking.choose_day)
 async def make_calendar_prev(call: types.CallbackQuery, state: FSMContext):
     state_data = await state.get_data()
@@ -224,34 +195,21 @@ async def make_calendar_prev(call: types.CallbackQuery, state: FSMContext):
     await state.update_data(state_current_date=prev_date)
     await call.answer()
 
-@dp.message_handler(Text(startswith=["current_month"]), state=Booking.choose_day)
-async def make_calendar(message: types.Message, state: FSMContext):
-    await message.answer(
-        "Выберите дату бронирования:",
-        reply_markup=get_calendar_keyboard(dt.date.today()),
-    )
-    await state.update_data(state_current_date=dt.date.today())
-    await Booking.choose_day.set()  # встаем в состояние выбора дня
 
-
+# первое формирование календаря текущего месяца
 @dp.message_handler(Text(equals="Оформить бронь"))
 async def make_calendar(message: types.Message, state: FSMContext):
+    await state.update_data(state_current_date=dt.date.today())
+    await Booking.choose_day.set()  # встаем в состояние выбора дня
     await message.answer(
         "Выберите дату бронирования:",
         reply_markup=get_calendar_keyboard(dt.date.today()),
     )
-    await state.update_data(state_current_date=dt.date.today())
-    await Booking.choose_day.set()  # встаем в состояние выбора дня
 
-
-# @dp.callback_query_handler(Text(startswith=["empty_day"]), state=Booking.choose_day)
-# async def callback_empty(call: types.CallbackQuery):
-#     await call.answer()
-
-
+#формирование расписания времени
 @dp.callback_query_handler(state=Booking.choose_day)
 async def callback_choose_day(call: types.CallbackQuery):
-    if call.data in ("empty_day", "week_day"):
+    if call.data in ("empty_day", "week_day") or "day_" not in call.data:
         await call.answer()
         return
     button_datetime = dt.datetime.strptime(call.data[4:], g_date_format)
@@ -260,7 +218,20 @@ async def callback_choose_day(call: types.CallbackQuery):
         "Выберите время бронирования:",
         reply_markup=get_time_keyboard(button_datetime),
     )
+    await call.answer()
 
+#возврат к календарю с состояния выбора времени
+@dp.callback_query_handler(Text(equals="current_month"), state=Booking.choose_time)
+async def back_to_calendar(call: types.CallbackQuery, state: FSMContext):
+    await state.update_data(state_current_date=dt.date.today())
+    await Booking.choose_day.set()  # встаем в состояние выбора дня
+    await call.message.answer(
+        "Выберите дату бронирования:",
+        reply_markup=get_calendar_keyboard(dt.date.today()),
+    )
+    await call.answer()
+
+#выбор времени
 @dp.callback_query_handler(state=Booking.choose_time)
 async def callback_choose_time(call: types.CallbackQuery, state: FSMContext):
     start_datetime, end_datetime = [
@@ -284,69 +255,73 @@ async def callback_choose_time(call: types.CallbackQuery, state: FSMContext):
             s.add(user_obj)
             s.commit()
         except sql_exc.IntegrityError:
-             s.rollback()
+            s.rollback()
         s.add(scheduler_obj)
         s.commit()
-    await call.answer(text=f"Оформлено бронирование на {start_datetime.strftime(g_date_format)} c "
-                           f"{start_datetime.strftime(g_time_format)} по {end_datetime.strftime(g_time_format)}",
-                      show_alert=True)
-    await state.finish()
-
-#
-# class UserState(StatesGroup):
-#     name = State()
-#     address = State()
-#
-#
-# @dp.message_handler(commands=['reg'])
-# async def user_register(message: types.Message):
-#     await message.answer("Введите своё имя")
-#     await UserState.name.set()
-#
-#
-# @dp.message_handler(state=UserState.name)
-# async def get_username(message: types.Message, state: FSMContext):
-#     await state.update_data(username=message.text)
-#     await message.answer("Отлично! Теперь введите ваш адрес.")
-#     await UserState.next()  # либо же UserState.adress.set()
-#
-#
-#
-# @dp.message_handler(state=UserState.address)
-# async def get_address(message: types.Message, state: FSMContext):
-#     await state.update_data(address=message.text)
-#     data = await state.get_data()
-#     await message.answer(f"Имя: {data['username']}\n"
-#                          f"Адрес: {data['address']}")
-#
-#     await state.finish()
+    await call.answer(
+        text=f"Оформлено бронирование на {start_datetime.strftime(g_date_format)} c "
+        f"{start_datetime.strftime(g_time_format)} по {end_datetime.strftime(g_time_format)}",
+        show_alert=True,
+    )
+    await state.finish() #сброс состояния
+    await main_menu(call.message)  # вызов меню
 
 
-# @dp.callback_query_handler(Text(startswith=["week_day_empty", "week_day_"]))
-# async def callback_empty(call: types.CallbackQuery, state: FSMContext):
-#     await call.answer()
-#     return
-# @dp.callback_query_handler(Text(startswith=["day_"]))
-# async def callback_empty(call: types.CallbackQuery, state: FSMContext):
-#     await call.answer()
-#     return
+
+class EmployeeAddSage(StatesGroup):
+    start = State()
+    first_name = State()
+    id_position = State()
+
+# Добавление сотрудника
+@dp.message_handler(Text(equals="Добавить сотрудника"))
+async def make_calendar(message: types.Message, state: FSMContext):
+    await EmployeeAddSage.first_name.set() # встаем в состояние выбора дня
+    await message.answer(
+        "Введите Имя сотрудника"
+    )
+
+@dp.message_handler(state=EmployeeAddSage.first_name)
+async def make_calendar(message: types.Message, state: FSMContext):
+    print(message.text)
+    employee_object = Employee(first_name=message.text)
+    await state.update_data(employee_object=employee_object)
+    await EmployeeAddSage.id_position.set() # встаем в состояние выбора дня
+    await message.answer("Введите должность сотрудника")
+
+@dp.message_handler(state=EmployeeAddSage.id_position)
+async def make_calendar(message: types.Message, state: FSMContext):
+    print(message.text)
+    employee_object = (await state.get_data())["employee_object"]
+    employee_object.id_position = message.text
+    with Session() as s:
+        try:
+            s.add(employee_object)
+            s.commit()
+        except sql_exc.IntegrityError:
+            s.rollback()
+    # await state.update_data(employee_object=employee_object)
+    # await EmployeeAddSage.id_position.set() # встаем в состояние выбора дня
+    # await message.answer("Введите должность сотрудника")
 
 
-#
-# @dp.message_handler(commands="start")
-# async def cmd_start(message: types.Message):
-#     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-#     buttons = ["С пюрешкой", "Без пюрешки"]
-#     keyboard.add(*buttons)
-#     await message.answer("Как подавать котлеты?", reply_markup=keyboard)
-# @dp.message_handler(Text(equals="С пюрешкой"))
-# async def with_puree(message: types.Message):
-#     await message.reply("Отличный выбор!")
-#
-# @dp.message_handler(lambda message: message.text == "Без пюрешки")
-# async def without_puree(message: types.Message):
-#     await message.reply("Так невкусно!")
-#
+
+
+
+
+
+
+
+
+
+
+
+# пустой хэндлер для клавиатуры из предыдущих сообщений
+@dp.callback_query_handler()
+async def callback_empty(call: types.CallbackQuery):
+    await call.answer()
+
+
 # @dp.message_handler(commands="special_buttons")
 # async def cmd_special_buttons(message: types.Message):
 #     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -363,17 +338,4 @@ async def callback_choose_time(call: types.CallbackQuery, state: FSMContext):
 #     await asyncio.sleep(10)
 #     reply = "latitude:  {}\nlongitude: {}".format(lat, lon)
 #     await message.answer(reply, reply_markup=types.ReplyKeyboardRemove())
-#
-@dp.message_handler(commands=["start", "help"])
-async def send_welcome(msg: types.Message):
-    await msg.answer(f"Я бот. Приятно познакомиться, {msg.from_user.first_name}")
-
-
-#
-# @dp.message_handler(content_types=['text'])
-# async def get_text_messages(msg: types.Message):
-#    if msg.text.lower() == 'привет':
-#        await msg.answer('Привет!')
-#    else:
-#        await msg.answer('Не понимаю, что это значит.')
 #
