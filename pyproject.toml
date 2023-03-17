@@ -12,6 +12,7 @@ googlemaps = "^4.7.3"
 sqlalchemy = "^2.0.1"
 psycopg2 = "^2.9.5"
 python-dateutil = "^2.8.2"
+aiologger = "^0.7.0"
 
 [tool.poetry.dev-dependencies]
 
