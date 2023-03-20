@@ -163,6 +163,7 @@ def get_calendar_keyboard(base_date: dt.date) -> types.InlineKeyboardMarkup:
     keyboard.add(*buttons)
     return keyboard
 
+
 # начальное меню
 @dp.message_handler(commands="start")
 async def main_menu(message: types.Message):
@@ -206,7 +207,8 @@ async def make_calendar(message: types.Message, state: FSMContext):
         reply_markup=get_calendar_keyboard(dt.date.today()),
     )
 
-#формирование расписания времени
+
+# формирование расписания времени
 @dp.callback_query_handler(state=Booking.choose_day)
 async def callback_choose_day(call: types.CallbackQuery):
     if call.data in ("empty_day", "week_day") or "day_" not in call.data:
@@ -220,7 +222,8 @@ async def callback_choose_day(call: types.CallbackQuery):
     )
     await call.answer()
 
-#возврат к календарю с состояния выбора времени
+
+# возврат к календарю с состояния выбора времени
 @dp.callback_query_handler(Text(equals="current_month"), state=Booking.choose_time)
 async def back_to_calendar(call: types.CallbackQuery, state: FSMContext):
     await state.update_data(state_current_date=dt.date.today())
@@ -231,7 +234,8 @@ async def back_to_calendar(call: types.CallbackQuery, state: FSMContext):
     )
     await call.answer()
 
-#выбор времени
+
+# выбор времени
 @dp.callback_query_handler(state=Booking.choose_time)
 async def callback_choose_time(call: types.CallbackQuery, state: FSMContext):
     start_datetime, end_datetime = [
@@ -263,9 +267,8 @@ async def callback_choose_time(call: types.CallbackQuery, state: FSMContext):
         f"{start_datetime.strftime(g_time_format)} по {end_datetime.strftime(g_time_format)}",
         show_alert=True,
     )
-    await state.finish() #сброс состояния
+    await state.finish()  # сброс состояния
     await main_menu(call.message)  # вызов меню
-
 
 
 class EmployeeAddSage(StatesGroup):
@@ -273,21 +276,22 @@ class EmployeeAddSage(StatesGroup):
     first_name = State()
     id_position = State()
 
+
 # Добавление сотрудника
 @dp.message_handler(Text(equals="Добавить сотрудника"))
 async def make_calendar(message: types.Message, state: FSMContext):
-    await EmployeeAddSage.first_name.set() # встаем в состояние выбора дня
-    await message.answer(
-        "Введите Имя сотрудника"
-    )
+    await EmployeeAddSage.first_name.set()  # встаем в состояние выбора дня
+    await message.answer("Введите Имя сотрудника")
+
 
 @dp.message_handler(state=EmployeeAddSage.first_name)
 async def make_calendar(message: types.Message, state: FSMContext):
     print(message.text)
     employee_object = Employee(first_name=message.text)
     await state.update_data(employee_object=employee_object)
-    await EmployeeAddSage.id_position.set() # встаем в состояние выбора дня
+    await EmployeeAddSage.id_position.set()  # встаем в состояние выбора дня
     await message.answer("Введите должность сотрудника")
+
 
 @dp.message_handler(state=EmployeeAddSage.id_position)
 async def make_calendar(message: types.Message, state: FSMContext):
@@ -303,17 +307,6 @@ async def make_calendar(message: types.Message, state: FSMContext):
     # await state.update_data(employee_object=employee_object)
     # await EmployeeAddSage.id_position.set() # встаем в состояние выбора дня
     # await message.answer("Введите должность сотрудника")
-
-
-
-
-
-
-
-
-
-
-
 
 
 # пустой хэндлер для клавиатуры из предыдущих сообщений
