@@ -1,7 +1,6 @@
 import os
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from sqlalchemy.orm import sessionmaker
 
 # загрузка переменных окружения
 dotenv_path = os.path.join(os.path.dirname(__file__), "../../.env")
@@ -20,4 +19,4 @@ async_engine = create_async_engine(
     # ,echo=True
 )
 
-async_session = async_sessionmaker(bind=async_engine)  # создание базового шалона открытия сессии
+# async_session = async_sessionmaker(bind=async_engine)  # создание базового шалона открытия сессии

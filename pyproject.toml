@@ -9,10 +9,11 @@ python = "^3.9"
 python-dotenv = "^0.21.0"
 aiogram = "2.23.1"
 googlemaps = "^4.7.3"
-sqlalchemy = "^2.0.1"
 psycopg2 = "^2.9.5"
 python-dateutil = "^2.8.2"
 aiologger = "^0.7.0"
+sqlalchemy = {extras = ["asyncio"], version = "^2.0.7"}
+asyncpg = "^0.27.0"
 
 [tool.poetry.dev-dependencies]
 

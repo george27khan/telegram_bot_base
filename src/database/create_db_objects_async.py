@@ -184,4 +184,4 @@ async def init_database(async_session: async_sessionmaker[AsyncSession]) -> None
     await async_engine.dispose()
 
 
-# init_database()
+init_database(async_session)
