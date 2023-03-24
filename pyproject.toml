@@ -14,6 +14,7 @@ python-dateutil = "^2.8.2"
 aiologger = "^0.7.0"
 sqlalchemy = {extras = ["asyncio"], version = "^2.0.7"}
 asyncpg = "^0.27.0"
+msvc-runtime = "^14.34.31931"
 
 [tool.poetry.dev-dependencies]
 

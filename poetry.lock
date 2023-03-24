@@ -480,6 +480,26 @@ files = [
 ]
 
 [[package]]
+name = "msvc-runtime"
+version = "14.34.31931"
+description = "Install the Microsoft™ Visual C++™ runtime DLLs to the sys.prefix and Scripts directories"
+category = "main"
+optional = false
+python-versions = ">=3.5"
+files = [
+    {file = "msvc_runtime-14.34.31931-cp310-cp310-win32.whl", hash = "sha256:be06bd2b66aa4f64f79452b312a49044c07c51f72159a7ebda3bdfbc3e2a0481"},
+    {file = "msvc_runtime-14.34.31931-cp310-cp310-win_amd64.whl", hash = "sha256:6ca55f411426027fc31ea4e61325a4f2fd44978aa669fb8378e19363935ea10e"},
+    {file = "msvc_runtime-14.34.31931-cp311-cp311-win32.whl", hash = "sha256:7b62b7c64ea3b65f4142a08779323c5f19f7f8b4ee00d5e9040e6cf6a75852c0"},
+    {file = "msvc_runtime-14.34.31931-cp311-cp311-win_amd64.whl", hash = "sha256:21a7d75e98e8197e708b1ba95bce35cdc351f304e7f1326ae9f427d43fd9a728"},
+    {file = "msvc_runtime-14.34.31931-cp311-cp311-win_arm64.whl", hash = "sha256:9c4b38d6dca0dd7384397a4842ba6f7522bb20e00621bfeb36ab0df53f042439"},
+    {file = "msvc_runtime-14.34.31931-cp38-cp38-win32.whl", hash = "sha256:734c6961564f0d28fcdcb807e5802604a52d72bfaabe9908013371d0c4e54101"},
+    {file = "msvc_runtime-14.34.31931-cp38-cp38-win_amd64.whl", hash = "sha256:0ab774f87001a9707f6a538b0af0d17c6eb417db33ca2b43c286becf01e05c6d"},
+    {file = "msvc_runtime-14.34.31931-cp39-cp39-win32.whl", hash = "sha256:8660b55a592faab37a4d88ef20dbc3c7102e6496011ca09a326d3ca7a13ee7f0"},
+    {file = "msvc_runtime-14.34.31931-cp39-cp39-win_amd64.whl", hash = "sha256:a7a91f34f2f3e8ad24f21991afdf6c45705569ecdf03b8c85a7b4011d827fe50"},
+    {file = "msvc_runtime-14.34.31931-pp38-pypy38_pp73-win_amd64.whl", hash = "sha256:6a26b6b95ae303c955b3071520e573eb55b4f29ef9a194bf05144b217437660c"},
+]
+
+[[package]]
 name = "multidict"
 version = "6.0.3"
 description = "multidict implementation"
@@ -860,4 +880,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "210dbb169b8250c46c1b33e2716b5d8b14467fa2f7df1ca253946d46d7015d11"
+content-hash = "08a2e2ed0285e3b3af48762be287ac0c5407f24d29b1517e837d3d88a7a298e5"
